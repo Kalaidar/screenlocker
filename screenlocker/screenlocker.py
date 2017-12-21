@@ -3,7 +3,6 @@ import time
 import datetime
 import ctypes
 
-#commit
 
 def logWrite(logText):
     ts = time.time()
