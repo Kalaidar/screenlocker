@@ -3,6 +3,8 @@ import time
 import datetime
 import ctypes
 
+#commit
+
 def logWrite(logText):
     ts = time.time()
     ts = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
