@@ -1,40 +1,117 @@
-import tkinter as tk
 import spaceLib
+import tkinter as tk
+import random
+import threading
 
 
-class mainWindow(tk.Frame):
-    def __init__(self, parent):
-        tk.Frame.__init__(self, parent)
-        self.header = tk.Label(self, text="SPACE INVADERS", anchor="w", font=("invasion2000",80))
-        self.header.pack(side="top")
-        
-        
-class Example(tk.Frame):
-    def __init__(self, parent):
-        tk.Frame.__init__(self, parent)
-
-        # create a prompt, an input box, an output label,
-        # and a button to do the computation
-        self.prompt = tk.Label(self, text="Enter a number:", anchor="w")
-        self.entry = tk.Entry(self)
-        self.submit = tk.Button(self, text="Submit", command = self.calculate)
-        self.output = tk.Label(self, text="")
-
-        # lay the widgets out on the screen. 
-        self.prompt.pack(side="top", fill="x")
-        self.entry.pack(side="top", fill="x", padx=20)
-        self.output.pack(side="top", fill="x", expand=True)
-        self.submit.pack(side="right")
-
-
-if __name__ == "__main__":
-    spaceLib.loadfont(bytes('gfx\invasion2000.ttf', encoding='utf-8'))
+def makeRoot():
     tkRootWidth = 1200
     tkRootHeight = 600
+    global root
     root = tk.Tk()
     root.title('SPACE INVADERS')
     root.resizable(width=False, height=False)
     root.geometry('{}x{}'.format(tkRootWidth, tkRootHeight))
-    root.tk_setPalette(background="black", fg="lavender")
-    mainWindow(root).pack(fill="both", expand=True)
-    root.mainloop()
+    
+    
+def _delete_window():
+    try:
+        root.destroy()
+    except:
+        pass
+
+    
+def mainMenu():
+
+    def startGame(event):
+        rootFrame.pack_forget()
+        rootFrame.destroy()
+        playGame()
+        root.quit()
+
+    def highScores(event):
+        exit()
+
+    def quitGame(event):
+        exit()
+
+    def onHover(event):
+        event.widget.config(bg="saddle brown")
+
+    def offHover(event):
+        event.widget.config(bg="black")
+
+    rootFrame = tk.Frame(root)
+    rootFrame.tk_setPalette(background="black", foreground="ghost white")
+    header = tk.Label(rootFrame, text="SPACE INVADERS", anchor="w", fg="seashell2", font=("invasion2000", 80))
+    startGameButton = tk.Button(rootFrame, text="START GAME", bd=0)
+    highScoresButton = tk.Button(rootFrame, text="HIGH SCORES", bd=0)
+    quitButton = tk.Button(rootFrame, text="QUIT GAME", bd=0)
+    startGameButton.bind("<Enter>", onHover)
+    startGameButton.bind("<Leave>", offHover)
+    startGameButton.bind("<Button-1>", startGame)
+    highScoresButton.bind("<Enter>", onHover)
+    highScoresButton.bind("<Leave>", offHover)
+    quitButton.bind("<Enter>", onHover)
+    quitButton.bind("<Leave>", offHover)
+    quitButton.bind("<Button-1>", quitGame)
+    rootFrame.pack(expand=1, fill="both")
+    header.pack(side="top")
+    startGameButton.pack(pady=(100, 0))
+    highScoresButton.pack()
+    quitButton.pack()
+
+
+def starSkyInit():
+
+    def makeNewStar():
+        star = {}
+        star['x'] = random.randint(10, 1199)
+        star['y'] = random.randint(1, 599)
+        star['speed'] = random.randint(1, 5)
+        star['me'] = ""
+        return star
+    
+    global stars   
+    stars = []
+    for _ in range(50):
+        stars.append(makeNewStar())
+        
+            
+def playGame():
+    
+    def moveStars():
+        for i in stars:
+            i['x'] -= i['speed']
+            if i['x'] < 1:
+                mainCanvas.delete(i['me'])
+                i['x'] = 1199
+                i['y'] = random.randint(1, 599)
+                i['me'] = mainCanvas.create_line(i['x'], i['y'], i['x'] + 1, i['y'], fill="snow")
+            mainCanvas.move(i['me'], -i['speed'], 0)
+        mainCanvas.after(20, moveStars)
+
+    def escape(event):
+        mainCanvas.pack_forget()
+        mainCanvas.destroy()
+        mainMenu()
+    
+    global mainCanvas    
+    mainCanvas = tk.Canvas(root, highlightthickness=0)
+    mainCanvas.bind("<Escape>", escape)
+    mainCanvas.pack(fill="both", expand=1)
+    mainCanvas.focus_set()
+
+    for i in stars:
+        i['me'] = mainCanvas.create_line(i['x'], i['y'], i['x'] + 1, i['y'], fill="snow")
+    moveStars()
+
+if __name__ == "__main__":
+    spaceLib.loadfont(bytes('gfx\invasion2000.ttf', encoding='utf-8'))
+    makeRoot()    
+    root.option_add("*font", "invasion2000 24")
+    starSkyInit()
+    mainMenu()
+    while True:
+        root.mainloop()
+    
