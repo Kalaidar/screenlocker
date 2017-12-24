@@ -1,7 +1,8 @@
 import spaceLib
 import tkinter as tk
 import random
-import threading
+from threading import Thread
+from time import sleep
 
 
 def makeRoot():
@@ -77,9 +78,10 @@ def starSkyInit():
     for _ in range(50):
         stars.append(makeNewStar())
         
-            
-def playGame():
-    
+
+def starFall():
+    global starThread
+
     def moveStars():
         for i in stars:
             i['x'] -= i['speed']
@@ -89,9 +91,18 @@ def playGame():
                 i['y'] = random.randint(1, 599)
                 i['me'] = mainCanvas.create_line(i['x'], i['y'], i['x'] + 1, i['y'], fill="snow")
             mainCanvas.move(i['me'], -i['speed'], 0)
-        mainCanvas.after(20, moveStars)
+        mainCanvas.after(10, moveStars)
 
+    for i in stars:
+        i['me'] = mainCanvas.create_line(i['x'], i['y'], i['x'] + 1, i['y'], fill="snow")
+    starThread = Thread(target=moveStars)
+    starThread.start()
+
+
+def playGame():
+    
     def escape(event):
+        starThread.join()
         mainCanvas.pack_forget()
         mainCanvas.destroy()
         mainMenu()
@@ -101,10 +112,8 @@ def playGame():
     mainCanvas.bind("<Escape>", escape)
     mainCanvas.pack(fill="both", expand=1)
     mainCanvas.focus_set()
+    starFall()
 
-    for i in stars:
-        i['me'] = mainCanvas.create_line(i['x'], i['y'], i['x'] + 1, i['y'], fill="snow")
-    moveStars()
 
 if __name__ == "__main__":
     spaceLib.loadfont(bytes('gfx\invasion2000.ttf', encoding='utf-8'))
