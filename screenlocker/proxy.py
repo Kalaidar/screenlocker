@@ -36,7 +36,7 @@ def serverListener(sockServer):
         logWrite('server connected\n')
 
 sockServer = socketServer()
-thread.start_new_thread(serverListener, (sockServer,))
+thread.Thread(serverListener, (sockServer,))
 
 while True:
     connClient, addrClient = sockClient.accept()
