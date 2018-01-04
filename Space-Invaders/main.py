@@ -1,32 +1,33 @@
-import spaceLib
-import tkinter as tk
 import random
-from threading import Thread
-from time import sleep
+import pygame
+from pygame.locals import *
+import tkinter as tk
+from time import sleep, clock
+from gameObjects import *
+import spacelib
+import os
 
 
 def makeRoot():
-    tkRootWidth = 1200
-    tkRootHeight = 600
     global root
     root = tk.Tk()
     root.title('SPACE INVADERS')
     root.resizable(width=False, height=False)
-    root.geometry('{}x{}'.format(tkRootWidth, tkRootHeight))
+    root.geometry('{}x{}'.format(windowWidth, windowHeight))
     
-    
-def _delete_window():
-    try:
-        root.destroy()
-    except:
-        pass
-
     
 def mainMenu():
 
     def startGame(event):
         rootFrame.pack_forget()
         rootFrame.destroy()
+        root.update()
+        os.environ['SDL_WINDOWID'] = str(root.winfo_id())
+        os.environ['SDL_VIDEODRIVER'] = 'windib'
+        pygame.init()
+        global gameScreen
+        gameScreen = pygame.display.set_mode((1200, 600))
+        gameScreen.fill(black)
         playGame()
         root.quit()
 
@@ -67,60 +68,80 @@ def starSkyInit():
 
     def makeNewStar():
         star = {}
-        star['x'] = random.randint(10, 1199)
-        star['y'] = random.randint(1, 599)
+        star['x'] = random.randint(1, (windowWidth - 1))
+        star['y'] = random.randint(1, (windowHeight - 1))
         star['speed'] = random.randint(1, 5)
-        star['me'] = ""
         return star
     
     global stars   
     stars = []
     for _ in range(50):
         stars.append(makeNewStar())
-        
 
-def starFall():
-    global starThread
 
-    def moveStars():
-        for i in stars:
-            i['x'] -= i['speed']
-            if i['x'] < 1:
-                mainCanvas.delete(i['me'])
-                i['x'] = 1199
-                i['y'] = random.randint(1, 599)
-                i['me'] = mainCanvas.create_line(i['x'], i['y'], i['x'] + 1, i['y'], fill="snow")
-            mainCanvas.move(i['me'], -i['speed'], 0)
-        mainCanvas.after(10, moveStars)
-
-    for i in stars:
-        i['me'] = mainCanvas.create_line(i['x'], i['y'], i['x'] + 1, i['y'], fill="snow")
-    starThread = Thread(target=moveStars)
-    starThread.start()
+def starSky():
+    for s in stars:
+        s['x'] -= s['speed']
+        if s['x'] < 1:
+            s['x'] = windowWidth - 1
+            s['y'] = random.randint(1, (windowHeight - 1))
+            s['speed'] = random.randint(1, 3)
+        gameScreen.set_at((s['x'], s['y']), grey)
 
 
 def playGame():
-    
-    def escape(event):
-        starThread.join()
-        mainCanvas.pack_forget()
-        mainCanvas.destroy()
-        mainMenu()
-    
-    global mainCanvas    
-    mainCanvas = tk.Canvas(root, highlightthickness=0)
-    mainCanvas.bind("<Escape>", escape)
-    mainCanvas.pack(fill="both", expand=1)
-    mainCanvas.focus_set()
-    starFall()
+    allSprites = pygame.sprite.Group()
+    plShip = playerShip()
+    allSprites.add(plShip)
+    carryOn = True
+    while carryOn:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                carryOn = False
+        keys = pygame.key.get_pressed()
+        if keys[K_ESCAPE]:
+            carryOn = False
+        if keys[K_UP]:
+            if (plShip.rect.y - plShip.speedy) < 0:
+                plShip.rect.y = 0
+            else:
+                plShip.rect.y -= plShip.speedy
+        if keys[K_DOWN]:
+            if (plShip.rect.y + plShip.speedy) > (windowHeight - plShip.rect.height):
+                plShip.rect.y = windowHeight - plShip.rect.height
+            else:
+                plShip.rect.y += plShip.speedy
+        if keys[K_RIGHT]:
+            if (plShip.rect.x + plShip.speedx) > 300:
+                plShip.rect.x = 300
+            else:
+                plShip.rect.x += plShip.speedx
+        if keys[K_LEFT]:
+            if (plShip.rect.x - plShip.speedx) < 0:
+                plShip.rect.x = 0
+            else:
+                plShip.rect.x -= plShip.speedx
 
-
+        gameScreen.fill(black)
+        starSky()
+        allSprites.draw(gameScreen)
+        pygame.display.update()
+        clock.tick(100)
+    
 if __name__ == "__main__":
-    spaceLib.loadfont(bytes('gfx\invasion2000.ttf', encoding='utf-8'))
-    makeRoot()    
-    root.option_add("*font", "invasion2000 24")
+    global windowWidth
+    global windowHeight
+    windowWidth = 1200
+    windowHeight = 600
+    black = (0, 0, 0)
+    grey = (240, 240, 240)
     starSkyInit()
+    clock = pygame.time.Clock()
+    pygame.font.init()
+    regularFont = pygame.font.Font('gfx\invasion2000.ttf', 24)
+    spacelib.loadfont(bytes('gfx\invasion2000.ttf', encoding='utf-8'))
+    makeRoot()
+    root.option_add("*font", "invasion2000 24")
     mainMenu()
-    while True:
-        root.mainloop()
+    root.mainloop()
     
