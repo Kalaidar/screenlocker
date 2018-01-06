@@ -1,3 +1,12 @@
+# -*- coding: cp1251 -*-
+
+from pip._vendor.pyparsing import empty
+global windowWidth
+global windowHeight
+windowWidth = 1200
+windowHeight = 600
+explosionAnim1 = []
+
 import random
 import pygame
 from pygame.locals import *
@@ -88,51 +97,157 @@ def starSky():
             s['speed'] = random.randint(1, 3)
         gameScreen.set_at((s['x'], s['y']), grey)
 
+def playerShipMove(plShip,keys):
+    if keys[K_UP]:
+        if (plShip.rect.y - plShip.speedy) < 0:
+            plShip.rect.y = 0
+        else:
+            plShip.rect.y -= plShip.speedy
+    if keys[K_DOWN]:
+        if (plShip.rect.y + plShip.speedy) > (windowHeight - plShip.rect.height):
+            plShip.rect.y = windowHeight - plShip.rect.height
+        else:
+            plShip.rect.y += plShip.speedy
+    if keys[K_RIGHT]:
+        if (plShip.rect.x + plShip.speedx) > 300:
+            plShip.rect.x = 300
+        else:
+            plShip.rect.x += plShip.speedx
+    if keys[K_LEFT]:
+        if (plShip.rect.x - plShip.speedx) < 0:
+            plShip.rect.x = 0
+        else:
+            plShip.rect.x -= plShip.speedx
 
 def playGame():
-    allSprites = pygame.sprite.Group()
+
+    plShipSpriteGroup = pygame.sprite.Group()
     plShip = playerShip()
-    allSprites.add(plShip)
+    plShipSpriteGroup.add(plShip)
+    plShots = []
+    plShotInterval = 50
+    plShotTimeout = 0
+    plShotsSpriteGroup = pygame.sprite.Group()
+    explosions = []
+    explosionsSpriteGroup = pygame.sprite.Group()
+    
+    life = pygame.image.load('gfx\heart.png')
+    score = 0
+    lives = 3
+    
+    enemyDumbShips = []
+    enemyDumbShipsCount = 5
+    enemyShipsSpritesGroup = pygame.sprite.Group()
+    
+    for i in range(1, 14):
+        filename = 'gfx\expl1\expl1{}.png'.format(i)
+        img = pygame.image.load(filename)
+        explosionAnim1.append(img)
+        
     carryOn = True
+
     while carryOn:
+    
+# проверяем закрытие окна
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 carryOn = False
+
+# проверяем нажатия клавиш и шевелим кораблем игрока
         keys = pygame.key.get_pressed()
         if keys[K_ESCAPE]:
-            carryOn = False
-        if keys[K_UP]:
-            if (plShip.rect.y - plShip.speedy) < 0:
-                plShip.rect.y = 0
-            else:
-                plShip.rect.y -= plShip.speedy
-        if keys[K_DOWN]:
-            if (plShip.rect.y + plShip.speedy) > (windowHeight - plShip.rect.height):
-                plShip.rect.y = windowHeight - plShip.rect.height
-            else:
-                plShip.rect.y += plShip.speedy
-        if keys[K_RIGHT]:
-            if (plShip.rect.x + plShip.speedx) > 300:
-                plShip.rect.x = 300
-            else:
-                plShip.rect.x += plShip.speedx
-        if keys[K_LEFT]:
-            if (plShip.rect.x - plShip.speedx) < 0:
-                plShip.rect.x = 0
-            else:
-                plShip.rect.x -= plShip.speedx
+            carryOn = False            
+        playerShipMove(plShip, keys)
 
+# считаем таймаут выстрела
+        if plShotTimeout > 0:
+            plShotTimeout -= 1
+
+# стреляем
+        if keys[K_SPACE]:
+            if plShotTimeout == 0:
+                plShots.append(playerShotSimple(plShip.rect))
+                plShotsSpriteGroup.add(plShots[-1])
+                plShotTimeout = plShotInterval
+
+# удаляем и добавляем вражеские корабли
+        enemyDumbShipsTemp = []        
+        for x in enemyDumbShips:
+            if x.exist:
+                enemyDumbShipsTemp.append(x)
+        enemyDumbShips = enemyDumbShipsTemp
+    
+        if len(enemyDumbShips) < enemyDumbShipsCount:
+            if random.randint(1, 200) == 1:
+                enemyDumbShips.append(enemyShipDumb())
+                enemyShipsSpritesGroup.add(enemyDumbShips[-1])
+
+# удаляем улетевшие выстрелы и отгремевшие взрывы
+        plShotsTemp = []        
+        for x in plShots:
+            if x.exist:
+                plShotsTemp.append(x)
+        plShots = plShotsTemp
+        explosionsTemp = []        
+        for x in plShots:
+            if x.exist:
+                explosionsTemp.append(x)
+        explosions = explosionsTemp
+        
+
+# проверяем столкновения
+        for sprite in enemyShipsSpritesGroup:
+            if sprite.rect.colliderect(plShip.rect):
+                sprite.exist = False
+                score += 100
+        
+        for shot in plShotsSpriteGroup:
+            for ship in enemyShipsSpritesGroup:
+                if shot.rect.colliderect(ship.rect):
+                    shot.exist = False
+                    ship.exist = False
+                    explosions.append(explosion1(ship.rect))
+                    explosionsSpriteGroup.add(explosions[-1])
+                    score += 100
+
+# двигаем все спрайты
+        for sprite in enemyShipsSpritesGroup:
+            if sprite.exist == True:
+                sprite.move()
+            else:
+                enemyShipsSpritesGroup.remove(sprite)
+        for sprite in plShotsSpriteGroup:
+            if sprite.exist == True:
+                sprite.move()
+            else:
+                plShotsSpriteGroup.remove(sprite)
+        for sprite in explosionsSpriteGroup:
+            if sprite.exist == True:
+                sprite.move()
+            else:
+                explosionsSpriteGroup.remove(sprite)
+
+
+# рисуем всё
         gameScreen.fill(black)
         starSky()
-        allSprites.draw(gameScreen)
+        plShipSpriteGroup.draw(gameScreen)
+        enemyShipsSpritesGroup.draw(gameScreen)
+        plShotsSpriteGroup.draw(gameScreen)
+        explosionsSpriteGroup.draw(gameScreen)
+        
+        scoreText = regularFont.render(str(score), 1, grey)
+        gameScreen.blit(scoreText, (1000, 6))
+        
+        for x in range(lives):
+            gameScreen.blit(life, ((x*10+800), 3))
+        
         pygame.display.update()
         clock.tick(100)
+
     
 if __name__ == "__main__":
-    global windowWidth
-    global windowHeight
-    windowWidth = 1200
-    windowHeight = 600
+
     black = (0, 0, 0)
     grey = (240, 240, 240)
     starSkyInit()
