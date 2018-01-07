@@ -1,4 +1,5 @@
 import pygame
+from pygame.locals import *
 import random
 from main import windowWidth, windowHeight, explosionAnim1
 
@@ -13,11 +14,38 @@ class playerShip(pygame.sprite.Sprite):
         self.rect.x = 0
         self.rect.y = 270
 
-    def move(self):
-        pass
+    def move(self, keys):
+        if keys[K_UP]:
+            if (self.rect.y - self.speedy) < 0:
+                self.rect.y = 0
+            else:
+                self.rect.y -= self.speedy
+        if keys[K_DOWN]:
+            if (self.rect.y + self.speedy) > (windowHeight - self.rect.height):
+                self.rect.y = windowHeight - self.rect.height
+            else:
+                self.rect.y += self.speedy
+        if keys[K_RIGHT]:
+            if (self.rect.x + self.speedx) > 600:
+                self.rect.x = 600
+            else:
+                self.rect.x += self.speedx
+        if keys[K_LEFT]:
+            if (self.rect.x - self.speedx) < 0:
+                self.rect.x = 0
+            else:
+                self.rect.x -= self.speedx
+        if self.invul > 0:
+            if self.invul & 4 != 0:
+                self.image = pygame.Surface((self.rect.width, self.rect.height))
+            else:
+                self.image = pygame.image.load("gfx\klingon.png")
+            self.invul -= 1
+            
 
     speedx = 2
     speedy = 2
+    invul = 0
 
 
 class enemyShipDumb(pygame.sprite.Sprite):
