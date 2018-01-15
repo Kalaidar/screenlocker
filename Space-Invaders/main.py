@@ -1,27 +1,17 @@
 # -*- coding: cp1251 -*-
 
-from pip._vendor.pyparsing import empty
-global windowWidth
-global windowHeight
-windowWidth = 1200
-windowHeight = 600
-explosionAnim1 = []
+# imported variables
+
 
 import pygame
 from pygame.locals import *
 import tkinter as tk
-from time import clock
-from gameObjects import *
-import spacelib
+from spacelib import *
 import os
+from gameObjects import *
 
+testMode = 1
 
-def makeRoot():
-    global root
-    root = tk.Tk()
-    root.title('SPACE INVADERS')
-    root.resizable(width=False, height=False)
-    root.geometry('{}x{}'.format(windowWidth, windowHeight))
     
 def mainMenu():
 
@@ -31,10 +21,6 @@ def mainMenu():
         root.update()
         os.environ['SDL_WINDOWID'] = str(root.winfo_id())
         os.environ['SDL_VIDEODRIVER'] = 'windib'
-        pygame.init()
-        global gameScreen
-        gameScreen = pygame.display.set_mode((1200, 600))
-        gameScreen.fill(black)
         playGame()
         root.quit()
 
@@ -70,59 +56,47 @@ def mainMenu():
     highScoresButton.pack()
     quitButton.pack()
 
-def gameOver():
-    pygame.quit()
-    mainMenu()
-
-def starSkyInit():
-
-    def makeNewStar():
-        star = {}
-        star['x'] = random.randint(1, (windowWidth - 1))
-        star['y'] = random.randint(1, (windowHeight - 1))
-        star['speed'] = random.randint(1, 5)
-        return star
-    
-    global stars   
-    stars = []
-    for _ in range(50):
-        stars.append(makeNewStar())
-
-
-def starSky():
-    for s in stars:
-        s['x'] -= s['speed']
-        if s['x'] < 1:
-            s['x'] = windowWidth - 1
-            s['y'] = random.randint(1, (windowHeight - 1))
-            s['speed'] = random.randint(1, 3)
-        gameScreen.set_at((s['x'], s['y']), grey)
 
 def playGame():
+    
+    lives = 3
+    plShotInterval = 50
+    invulTime = 250
+    enemyShipGroupInterval = 200
+    signRandomizerTemplate = [1, -1]
+    signRandomizer = list(signRandomizerTemplate)
+    level = list(level1)
 
-    plShipSpriteGroup = pygame.sprite.Group()
+    enemyShipGroupTimer = enemyShipGroupInterval
+    enemyShipCount = 0
+    pygame.init()
+    gameScreen = pygame.display.set_mode((1200, 600))
+    gameScreen.fill(black)
+    
     plShip = playerShip()
     plShipSpriteGroup.add(plShip)
-    plShotInterval = 50
     plShotTimeout = 0
-    plShotsSpriteGroup = pygame.sprite.Group()
-    explosionsSpriteGroup = pygame.sprite.Group()
     
     life = pygame.image.load('gfx\heart.png')
     score = 0
-    lives = 3
     gameOverTimer = 0
-    
-    enemyDumbShipsCount = 5
-    enemyShipsSpritesGroup = pygame.sprite.Group()
+    bonus = ''
 
     for i in range(1, 14):
         filename = 'gfx\expl1\expl1{}.png'.format(i)
         img = pygame.image.load(filename)
         explosionAnim1.append(img)
 
+    for i in range(1, 8):
+        filename = 'gfx\\bonus1\\bonus1{}.png'.format(i)
+        img = pygame.image.load(filename)
+        bonusAnim1.append(img)
+
+
     laserSound1 = pygame.mixer.Sound('snd\laser1.ogg')
-    metalSound1 = pygame.mixer.Sound('snd\metal-bang.ogg')
+    metalSound1 = pygame.mixer.Sound('snd\metalBang1.ogg')
+    metalSound2 = pygame.mixer.Sound('snd\metalBang2.ogg')
+    dingSound1 = pygame.mixer.Sound('snd\ding.ogg')
     explosionSounds = []
     explosionSoundsNum = -1
     for i in range(1, 5):
@@ -133,6 +107,14 @@ def playGame():
     pygame.mixer.music.load('snd\cavalry.mp3')
     pygame.mixer.music.play()
     
+    if testMode == 1:
+        lives = 3
+        plShotInterval = 10
+        invulTime = 50
+        plShip.speedx = 5
+        plShip.speedy = 5
+        plShip.xMoveBorder = 1000
+
     carryOn = True
     
     '''
@@ -161,13 +143,34 @@ def playGame():
             if keys[K_SPACE]:
                 if plShotTimeout == 0:
                     laserSound1.play()
-                    plShotsSpriteGroup.add(playerShotSimple(plShip.rect))
+                    plShotsSpriteGroup.add(playerShotSimple(plShip.rect, 'gfx\playerShotSimple.png'))
                     plShotTimeout = plShotInterval
 
 # добавляем вражеские корабли
-            if len(enemyShipsSpritesGroup) < enemyDumbShipsCount:
-                if random.randint(1, 50) == 1:
-                    enemyShipsSpritesGroup.add(enemyShipDumb())
+            if enemyShipGroupTimer > 0:
+                enemyShipGroupTimer -= 1
+            if enemyShipGroupTimer == 0 and len(enemyShipsSpritesGroup) == 0 and enemyShipCount == 0 or \
+                enemyShipCount == 0 and level[0] == 'next':
+                if level[0] == 'next':
+                    level.pop(0)
+                else:
+                    enemyShipGroupTimer = enemyShipGroupInterval
+                enemyShipType = level.pop(0)
+                enemyShipCount = level.pop(0)
+                enemyShipRandomCount = random.randint(0, level.pop(0))
+                enemyShipCount += enemyShipRandomCount
+                enemyShipAppearTime = level.pop(0)
+                if level == []:
+                    level = list(level1)
+                if level[0] == 'bonus': #смотрим, не надо ли нам добавить бонус после этой волны
+                    bonus = level.pop(0)
+                    bonus = level.pop(0)
+            if enemyShipGroupTimer == 0 and enemyShipCount > 0:
+                if signRandomizer == []:
+                    signRandomizer = list(signRandomizerTemplate)
+                if random.randint(1, enemyShipAppearTime) == 1:
+                    enemyShipsSpritesGroup.add(enemyShipType(signRandomizer.pop()))
+                    enemyShipCount -= 1
 
 # проверяем столкновения
             for ship in enemyShipsSpritesGroup:
@@ -175,12 +178,23 @@ def playGame():
                     if ship.rect.colliderect(plShip.rect):
                         ship.exist = False
                         lives -= 1
-                        plShip.invul = 250
-                        ship.exist = False
+                        plShip.invul = invulTime
                         metalSound1.play()
                         explosionsSpriteGroup.add(explosion1(ship.rect))
                         if lives == 0:
-                            plShip.exist = 0
+                            plShip.exist = False
+                            explosionsSpriteGroup.add(explosion1(plShip.rect))
+                            plShipSpriteGroup.remove(plShip)
+
+            for shot in enemyShotsSpriteGroup:
+                if plShip.invul == 0:
+                    if shot.rect.colliderect(plShip.rect):
+                        lives -= 1
+                        plShip.invul = invulTime
+                        shot.exist = False
+                        metalSound2.play()
+                        if lives == 0:
+                            plShip.exist = False
                             explosionsSpriteGroup.add(explosion1(plShip.rect))
                             plShipSpriteGroup.remove(plShip)
         
@@ -189,14 +203,20 @@ def playGame():
                     if shot.rect.colliderect(ship.rect):
                         shot.exist = False
                         ship.exist = False
-                        explosionSounds[random.randint(0,explosionSoundsNum)].play()
+                        explosionSounds[random.randint(0, explosionSoundsNum)].play()
                         explosionsSpriteGroup.add(explosion1(ship.rect))
-                        score += 100
+                        score += ship.score
+
+            for bon in bonusSpriteGroup:
+                if bon.rect.colliderect(plShip.rect):
+                    dingSound1.play()
+                    bon.exist = False
+                    plShip.activateBonus(bon)
 
 # двигаем все спрайты и удаляем отработавшие
         for sprite in enemyShipsSpritesGroup:
             if sprite.exist == True:
-                sprite.move()
+                sprite.move(plShip.rect)
             else:
                 enemyShipsSpritesGroup.remove(sprite)
         for sprite in plShotsSpriteGroup:
@@ -204,27 +224,45 @@ def playGame():
                 sprite.move()
             else:
                 plShotsSpriteGroup.remove(sprite)
+        for sprite in enemyShotsSpriteGroup:
+            if sprite.exist == True:
+                sprite.move()
+            else:
+                enemyShotsSpriteGroup.remove(sprite)
         for sprite in explosionsSpriteGroup:
             if sprite.exist == True:
                 sprite.move()
             else:
+                # если это - последний оставшийся взрыв и нам надо добавить бонус, то самое время
+                if len(explosionsSpriteGroup) == 1 and bonus != '':
+                    bonusSpriteGroup.add(bonus1(sprite.rect, bonus))
+                    bonus = ''
                 explosionsSpriteGroup.remove(sprite)
-
-
+        for sprite in bonusSpriteGroup:
+            if sprite.exist == True:
+                sprite.move()
+            else:
+                bonusSpriteGroup.remove(sprite)
+ 
 # рисуем всё
         gameScreen.fill(black)
-        starSky()
+        starSky(gameScreen)
         plShipSpriteGroup.draw(gameScreen)
+        bonusSpriteGroup.draw(gameScreen)
         enemyShipsSpritesGroup.draw(gameScreen)
         plShotsSpriteGroup.draw(gameScreen)
+        enemyShotsSpriteGroup.draw(gameScreen)
         explosionsSpriteGroup.draw(gameScreen)
         
         scoreText = regularFont.render(str(score), 1, grey)
         gameScreen.blit(scoreText, (1000, 6))
+
+        enemyShipGroupTimerText = regularFont.render(str(enemyShipGroupTimer), 1, grey)
+        gameScreen.blit(enemyShipGroupTimerText, (200, 6))
         
         for x in range(lives):
             gameScreen.blit(life, ((x*10+800), 3))
-        
+            
         if plShip.exist == False:
             gameOverTimer += 1
             if gameOverTimer > 100:
@@ -233,7 +271,7 @@ def playGame():
             if gameOverTimer == 100:
                 pygame.mixer.music.load('snd\gamover.mp3')
                 pygame.mixer.music.play()
-            if gameOverTimer > 500:
+            if gameOverTimer > 600:
                 pygame.quit()
                 mainMenu()
                 
@@ -243,15 +281,13 @@ def playGame():
     
 if __name__ == "__main__":
 
-    black = (0, 0, 0)
-    grey = (240, 240, 240)
     starSkyInit()
     clock = pygame.time.Clock()
     pygame.font.init()
     regularFont = pygame.font.Font('gfx\invasion2000.ttf', 24)
     largeFont = pygame.font.Font('gfx\invasion2000.ttf', 100)
-    spacelib.loadfont(bytes('gfx\invasion2000.ttf', encoding='utf-8'))
-    makeRoot()
+    loadfont(bytes('gfx\invasion2000.ttf', encoding='utf-8'))
+    root = makeRoot()
     root.option_add("*font", "invasion2000 24")
     mainMenu()
     root.mainloop()
